@@ -1,0 +1,23 @@
+# Data handling
+pandas>=2.0
+numpy>=1.24
+
+# Baseline ML models
+scikit-learn>=1.3
+
+# Bayesian modeling (pick one; pymc is the default target)
+pymc>=5.10
+arviz>=0.17
+
+# Optimization (ILP)
+pulp>=2.7
+
+# Visualization
+matplotlib>=3.7
+seaborn>=0.12
+
+# Testing
+pytest>=7.4
+
+# Notebooks
+jupyter>=1.0
