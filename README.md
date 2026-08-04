@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 # Algorithmic Risk Profiling & Optimization
 
 Vrushal Bagwe (25210728), Niraj Palve (25200843)
@@ -29,6 +28,72 @@ prescriptive, capacity-aware auditor assignment list — bridging predictive
 data science and operations research rather than treating them as separate
 stages.
 
+## Project structure
+
+```
+risk-profiling-optimization/
+├── data/
+│   ├── raw/            # PaySim CSVs (gitignored — see Setup)
+│   └── processed/      # cleaned / feature-engineered data
+├── notebooks/           # exploratory analysis
+├── src/
+│   ├── data/            # loading, cleaning, feature engineering
+│   ├── models/           # baseline classifiers + Bayesian model
+│   ├── optimization/     # ILP formulation and solver
+│   └── evaluation/       # metrics, financial-impact scoring
+├── tests/                # unit tests
+├── reports/figures/       # generated plots
+└── requirements.txt
+```
+
+## Setup
+
+```bash
+git clone <repo-url>
+cd risk-profiling-optimization
+python -m venv venv
+source venv/bin/activate  # or venv\Scripts\activate on Windows
+pip install -r requirements.txt
+```
+
+### Data
+
+Download the PaySim dataset (e.g. from Kaggle:
+`ealaxi/paysim1`) and place the CSV in `data/raw/`. This folder is
+gitignored — the raw dataset is never committed.
+
+For pipeline development and testing without the full ~470MB file, generate
+a small synthetic sample with the same schema:
+
+```bash
+python -m src.data.generate_sample
+```
+
+This writes `data/raw/sample_paysim.csv` (~20,000 rows). `src/data/load_data.py`
+automatically prefers a real `PS_*.csv` if one is present in `data/raw/`, and
+falls back to the sample otherwise.
+
+### Running the EDA notebook
+
+```bash
+jupyter notebook notebooks/01_eda.ipynb
+```
+
+See `reports/figures/` for the exported plots (class imbalance, transaction
+type distribution, amount distribution, and origin-balance discrepancy).
+
+## Roadmap
+
+- [x] Data ingestion & exploratory analysis
+- [ ] Preprocessing / feature engineering pipeline
+- [ ] Baseline classifiers (Random Forest / SVM)
+- [ ] Bayesian risk-profiling model
+- [ ] Expected financial yield derivation
+- [ ] ILP auditor allocation formulation
+- [ ] End-to-end integration (Bayesian → ILP)
+- [ ] Benchmarking against naive threshold policies
+- [ ] Results write-up and visualizations
+
 ## References
 
 - Blocki, J., Christin, N., Datta, A., Procaccia, A. D., & Sinha, A. (2013).
@@ -37,7 +102,3 @@ stages.
   detection using Bayesian inference. *IEEE BigComp*, 1–8.
 - Lopez-Rojas, E. A., Elmir, A., & Axelsson, S. (2016). PaySim: A financial
   mobile money simulator for fraud detection. *28th EMSS*, 249–255.
-=======
-[![Review Assignment Due Date](https://classroom.github.com/assets/deadline-readme-button-22041afd0340ce965d47ae6ef1cefeee28c7c493a6346c4f15d667ab976d596c.svg)](https://classroom.github.com/a/-bKyY6qM)
-[![Open in Visual Studio Code](https://classroom.github.com/assets/open-in-vscode-2e0aaae1b6195c2367325f4f02e2d04e9abb55f0b24a779b69b11b9e10269abc.svg)](https://classroom.github.com/online_ide?assignment_repo_id=23938463&assignment_repo_type=AssignmentRepo)
->>>>>>> 4811110a901ef9da48c4ed703b13e9b43f297771

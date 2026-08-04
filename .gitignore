@@ -22,6 +22,4 @@ env/
 .idea/
 
 # Outputs
-reports/figures/*
-!reports/figures/.gitkeep
 *.log
