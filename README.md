@@ -82,17 +82,17 @@ jupyter notebook notebooks/01_eda.ipynb
 See `reports/figures/` for the exported plots (class imbalance, transaction
 type distribution, amount distribution, and origin-balance discrepancy).
 
-## Roadmap
+### Preprocessing / feature engineering
 
-- [x] Data ingestion & exploratory analysis
-- [ ] Preprocessing / feature engineering pipeline
-- [ ] Baseline classifiers (Random Forest / SVM)
-- [ ] Bayesian risk-profiling model
-- [ ] Expected financial yield derivation
-- [ ] ILP auditor allocation formulation
-- [ ] End-to-end integration (Bayesian → ILP)
-- [ ] Benchmarking against naive threshold policies
-- [ ] Results write-up and visualizations
+```bash
+python -m src.data.preprocessing
+```
+
+Runs `src/data/preprocessing.py` end to end: loads the PaySim data (real or
+synthetic sample), engineers the balance-discrepancy features identified
+during EDA, one-hot encodes transaction type, and writes a stratified
+train/test split to `data/processed/train.csv` and `data/processed/test.csv`
+(fraud rate is preserved in both partitions despite how rare it is).
 
 ## References
 

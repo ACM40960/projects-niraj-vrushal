@@ -34,7 +34,8 @@ def generate_sample(n_rows: int = 20_000, n_steps: int = 30) -> pd.DataFrame:
     amounts = np.round(RNG.exponential(scale=8000, size=n_rows) + 1, 2)
 
     old_bal_orig = np.round(RNG.uniform(0, 50_000, size=n_rows), 2)
-    # Balance decreases by the transaction amount
+    # Balance decreases by the transaction amount (with occasional noisy/zeroed-out
+    # records, mirroring real-world data quality issues seen in PaySim).
     new_bal_orig = np.clip(old_bal_orig - amounts, 0, None)
 
     old_bal_dest = np.round(RNG.uniform(0, 50_000, size=n_rows), 2)
