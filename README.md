@@ -54,7 +54,7 @@ cd risk-profiling-optimization
 python -m venv venv
 source venv/bin/activate  # or venv\Scripts\activate on Windows
 pip install -r requirements.txt
-```
+
 
 ### Data
 
@@ -93,6 +93,19 @@ synthetic sample), engineers the balance-discrepancy features identified
 during EDA, one-hot encodes transaction type, and writes a stratified
 train/test split to `data/processed/train.csv` and `data/processed/test.csv`
 (fraud rate is preserved in both partitions despite how rare it is).
+
+### Baseline classifiers
+
+```bash
+python -m src.models.baseline
+```
+
+Trains a class-weighted Random Forest and a class-weighted Linear SVM on
+`data/processed/train.csv` and evaluates both on `data/processed/test.csv`
+(run preprocessing first). Reports precision, recall, F1, ROC AUC, and
+AUPRC rather than accuracy, since accuracy is meaningless on data this
+imbalanced. These serve as the deterministic-classifier comparison point
+for the Bayesian risk-profiling model added in the next step.
 
 ## References
 
