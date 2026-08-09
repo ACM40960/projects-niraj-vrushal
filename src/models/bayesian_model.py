@@ -21,7 +21,9 @@ with data size:
 """
 
 import pathlib
+import pickle
 
+import arviz as az
 import numpy as np
 import pandas as pd
 import pymc as pm
@@ -29,6 +31,10 @@ from scipy.special import expit
 from sklearn.preprocessing import StandardScaler
 
 RANDOM_STATE = 42
+
+MODELS_DIR = pathlib.Path(__file__).resolve().parents[2] / "models"
+TRACE_PATH = MODELS_DIR / "bayesian_trace.nc"
+SCALER_PATH = MODELS_DIR / "scaler.pkl"
 
 # Continuous columns get standardized before modeling; one-hot / binary
 # columns (type_*, orig_balance_drained) are left as-is.
@@ -60,6 +66,36 @@ def scale_features(
     X_test_scaled[cont_cols] = scaler.transform(X_test[cont_cols])
 
     return X_train_scaled, X_test_scaled, scaler
+
+
+def save_bayesian_artifacts(trace, scaler, models_dir: pathlib.Path = MODELS_DIR) -> None:
+    """
+    Persist a fitted trace + scaler to disk so downstream steps (expected
+    yield derivation, the ILP optimizer) can reuse this model without
+    re-fitting - important given how long fitting can take on the full
+    dataset, especially without a C compiler available.
+    """
+    models_dir = pathlib.Path(models_dir)
+    models_dir.mkdir(parents=True, exist_ok=True)
+    trace.to_netcdf(models_dir / "bayesian_trace.nc")
+    with open(models_dir / "scaler.pkl", "wb") as f:
+        pickle.dump(scaler, f)
+
+
+def load_bayesian_artifacts(models_dir: pathlib.Path = MODELS_DIR):
+    """Load a previously saved trace + scaler. Raises FileNotFoundError
+    with a helpful message if nothing has been fitted/saved yet."""
+    models_dir = pathlib.Path(models_dir)
+    trace_path, scaler_path = models_dir / "bayesian_trace.nc", models_dir / "scaler.pkl"
+    if not trace_path.exists() or not scaler_path.exists():
+        raise FileNotFoundError(
+            f"No saved Bayesian model found at {models_dir}. Run "
+            "`python -m src.models.bayesian_model` first."
+        )
+    trace = az.from_netcdf(trace_path)
+    with open(scaler_path, "rb") as f:
+        scaler = pickle.load(f)
+    return trace, scaler
 
 
 def build_bayesian_logistic_model(
@@ -152,23 +188,42 @@ def fit_bayesian_logistic(
     return model, trace
 
 
-def posterior_predictive_probabilities(trace, X_new: pd.DataFrame) -> np.ndarray:
+def posterior_predictive_probabilities(
+    trace,
+    X_new: pd.DataFrame,
+    max_draws: int | None = None,
+    dtype=np.float64,
+    random_state: int = RANDOM_STATE,
+) -> np.ndarray:
     """
     Compute the posterior distribution over fraud probability for each row
-    in X_new, using every posterior draw of (intercept, coefs).
+    in X_new, using posterior draws of (intercept, coefs).
 
-    Returns an array of shape (n_posterior_draws, n_rows): each row is one
-    posterior draw's fraud-probability estimate for every transaction. This
-    is the "full posterior distribution" the literature review calls for,
-    not just a point estimate.
+    Returns an array of shape (n_draws, n_rows): each row is one posterior
+    draw's fraud-probability estimate for every transaction. This is the
+    "full posterior distribution" the literature review calls for, not
+    just a point estimate.
+
+    On large X_new (e.g. the full ~1.3M-row PaySim test set), materializing
+    this at full posterior size and float64 can need many GB of memory
+    (e.g. 1000 draws x 1.3M rows x 8 bytes = ~10GB). Pass max_draws to
+    deterministically subsample the posterior (e.g. 100) and/or
+    dtype=np.float32 to keep memory bounded - both trade some precision in
+    the uncertainty estimate for tractable memory use.
     """
     intercept = trace.posterior["intercept"].values.reshape(-1)
     coefs = trace.posterior["coefs"].values.reshape(-1, trace.posterior["coefs"].shape[-1])
 
-    X_values = X_new.values.astype(float)
-    logits = intercept[:, None] + coefs @ X_values.T
+    if max_draws is not None and len(intercept) > max_draws:
+        rng = np.random.default_rng(random_state)
+        idx = rng.choice(len(intercept), size=max_draws, replace=False)
+        intercept = intercept[idx]
+        coefs = coefs[idx]
+
+    X_values = X_new.values.astype(dtype)
+    logits = intercept.astype(dtype)[:, None] + coefs.astype(dtype) @ X_values.T
     probs = expit(logits)  # numerically stable sigmoid (avoids exp overflow)
-    return probs
+    return probs.astype(dtype)
 
 
 def summarize_posterior_probabilities(probs: np.ndarray) -> pd.DataFrame:
@@ -270,3 +325,6 @@ if __name__ == "__main__":
         save_path=FIGURES_DIR / "bayesian_calibration.png",
     )
     print(f"\nSaved metrics and calibration plot to reports/")
+
+    save_bayesian_artifacts(trace, scaler)
+    print(f"Saved fitted model to {MODELS_DIR}/ (reused by src.models.expected_yield)")

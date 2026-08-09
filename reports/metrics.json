@@ -50,7 +50,7 @@
       ]
     ],
     "classification_report": "              precision    recall  f1-score   support\n\n           0       1.00      1.00      1.00   1270881\n           1       0.98      0.31      0.47      1643\n\n    accuracy                           1.00   1272524\n   macro avg       0.99      0.66      0.74   1272524\nweighted avg       1.00      1.00      1.00   1272524\n",
-    "roc_auc": 0.9593034005568132,
-    "average_precision": 0.5491851805010394
+    "roc_auc": 0.9591442593441285,
+    "average_precision": 0.5485518654859413
   }
 }

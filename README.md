@@ -54,6 +54,14 @@ cd risk-profiling-optimization
 python -m venv venv
 source venv/bin/activate  # or venv\Scripts\activate on Windows
 pip install -r requirements.txt
+pip install -e .
+```
+
+The last step installs this project itself in "editable" mode, so `src`
+is importable as a package regardless of which directory you run a script
+or `pytest` from (fixes `ModuleNotFoundError: No module named 'src'` if
+you run a script directly, e.g. `python src/data/preprocessing.py`, rather
+than as a module with `python -m src.data.preprocessing`).
 
 ### Data
 
@@ -113,14 +121,31 @@ python -m src.models.bayesian_model
 ```
 
 Fits a Bayesian logistic regression via ADVI (variational inference —
-scales to the full dataset; pass `batch_size=` to `fit_bayesian_logistic`
-for minibatch ADVI on the full ~6.3M-row PaySim dataset). Rather than a
-single fraud/not-fraud label, this produces a full posterior distribution
-over each transaction's fraud probability — the posterior mean is a
-continuous risk score, and its spread quantifies uncertainty. Results
-(precision/recall/F1/ROC AUC/AUPRC at a 0.5 threshold, for comparison
-against the baselines) and a calibration/reliability plot are saved to
-`reports/`.
+automatically switches to minibatch ADVI when the training set exceeds
+50,000 rows, so it scales to the full ~6.3M-row PaySim dataset without
+needing a gradient over all rows every iteration). Rather than a single
+fraud/not-fraud label, this produces a full posterior distribution over
+each transaction's fraud probability — the posterior mean is a continuous
+risk score, and its spread quantifies uncertainty. Results (precision/
+recall/F1/ROC AUC/AUPRC at a 0.5 threshold, for comparison against the
+baselines) and a calibration/reliability plot are saved to `reports/`.
+The fitted model itself is saved to `models/` so later steps (expected
+yield derivation, below) can reuse it without re-fitting.
+
+### Expected financial yield
+
+```bash
+python -m src.models.expected_yield
+```
+
+Loads the fitted Bayesian model (saved to `models/` by the step above -
+run `python -m src.models.bayesian_model` first) and, for every test
+transaction, combines its posterior fraud probability with its dollar
+amount into an **expected yield** score (`P(fraud) x amount`) - the
+objective function the ILP optimizer maximizes in the next step. Saves a
+ranked yield table to `data/processed/expected_yield.csv` and a capture-
+rate curve (what % of total fraud would be caught by auditing the top-k
+transactions ranked by expected yield) to `reports/figures/`.
 
 ## References
 

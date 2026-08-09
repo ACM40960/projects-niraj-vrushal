@@ -4,6 +4,10 @@ data/raw/*
 data/processed/*
 !data/processed/.gitkeep
 
+# Fitted model artifacts (regenerable via src.models.bayesian_model)
+models/*
+!models/.gitkeep
+
 # Python
 __pycache__/
 *.py[cod]
