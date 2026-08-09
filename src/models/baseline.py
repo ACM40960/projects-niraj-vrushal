@@ -26,6 +26,7 @@ from sklearn.metrics import (
 from sklearn.svm import LinearSVC
 
 from src.data.preprocessing import build_feature_matrix
+from src.evaluation.report_utils import FIGURES_DIR, REPORTS_DIR, save_metrics
 
 RANDOM_STATE = 42
 
@@ -129,7 +130,14 @@ if __name__ == "__main__":
     X_test, y_test = build_feature_matrix(test_df)
 
     rf = train_random_forest(X_train, y_train)
-    print_evaluation("Random Forest", evaluate_classifier(rf, X_test, y_test))
+    rf_metrics = evaluate_classifier(rf, X_test, y_test)
+    print_evaluation("Random Forest", rf_metrics)
+    save_metrics("Random Forest", rf_metrics)
 
     svm = train_linear_svm(X_train, y_train)
-    print_evaluation("Linear SVM", evaluate_classifier(svm, X_test, y_test))
+    svm_metrics = evaluate_classifier(svm, X_test, y_test)
+    print_evaluation("Linear SVM", svm_metrics)
+    save_metrics("Linear SVM", svm_metrics)
+
+    print(f"\nSaved metrics to {REPORTS_DIR / 'metrics.json'} and confusion "
+          f"matrix plots to {FIGURES_DIR}/")

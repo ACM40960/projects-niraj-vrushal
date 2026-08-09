@@ -55,7 +55,6 @@ python -m venv venv
 source venv/bin/activate  # or venv\Scripts\activate on Windows
 pip install -r requirements.txt
 
-
 ### Data
 
 Download the PaySim dataset (e.g. from Kaggle:
@@ -106,6 +105,22 @@ Trains a class-weighted Random Forest and a class-weighted Linear SVM on
 AUPRC rather than accuracy, since accuracy is meaningless on data this
 imbalanced. These serve as the deterministic-classifier comparison point
 for the Bayesian risk-profiling model added in the next step.
+
+### Bayesian risk-profiling model
+
+```bash
+python -m src.models.bayesian_model
+```
+
+Fits a Bayesian logistic regression via ADVI (variational inference —
+scales to the full dataset; pass `batch_size=` to `fit_bayesian_logistic`
+for minibatch ADVI on the full ~6.3M-row PaySim dataset). Rather than a
+single fraud/not-fraud label, this produces a full posterior distribution
+over each transaction's fraud probability — the posterior mean is a
+continuous risk score, and its spread quantifies uncertainty. Results
+(precision/recall/F1/ROC AUC/AUPRC at a 0.5 threshold, for comparison
+against the baselines) and a calibration/reliability plot are saved to
+`reports/`.
 
 ## References
 
