@@ -11,8 +11,11 @@ arviz>=0.17
 h5netcdf>=1.3
 h5py>=3.10
 
-# Optimization (ILP)
-pulp>=2.7
+# Optimization (ILP - scipy.optimize.milp uses the HiGHS solver linked
+# directly into scipy, avoiding external solver executables like CBC that
+# can run into platform-specific issues, e.g. antivirus quarantine or
+# missing runtime DLLs on Windows)
+scipy>=1.9
 
 # Visualization
 matplotlib>=3.7

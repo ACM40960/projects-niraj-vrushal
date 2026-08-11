@@ -147,6 +147,41 @@ ranked yield table to `data/processed/expected_yield.csv` and a capture-
 rate curve (what % of total fraud would be caught by auditing the top-k
 transactions ranked by expected yield) to `reports/figures/`.
 
+### ILP auditor allocation
+
+```bash
+python -m src.optimization.ilp_optimizer
+```
+
+Solves an Integer Linear Program deciding which transactions to actually
+audit, subject to real-world operational constraints named in the
+literature review (an "audit games" formulation following Blocki et al.,
+2013): a total investigator-time budget (transaction types are weighted
+by relative review cost, not just counted), per-sector caps so audits
+don't over-concentrate on one transaction type, and a mandatory random-
+sampling quota forced in regardless of yield (mandatory rows are exempt
+from the sector cap - it's meant to limit the optimizer's own
+discretionary picks, not conflict with the sampling requirement). Uses
+`scipy.optimize.milp` (HiGHS solver, linked directly into scipy - no
+external solver executable or subprocess involved). Solves over a
+bounded shortlist (top-N by
+expected yield) plus a separately-drawn random sample for tractability,
+since solving over the full multi-million-row population isn't feasible
+for a MIP solver. Saves the allocation to
+`data/processed/auditor_allocation.csv`, prints a comparison against a
+naive unconstrained top-k baseline, and saves a sector-breakdown plot to
+`reports/figures/`.
+
+Also runs a **sensitivity analysis** across a range of `sector_cap_fraction`
+values (0.1 through 1.0, plus unconstrained), quantifying the "price" of
+the sectoral-boundary constraint — how much expected yield and actual
+fraud dollars get traded away as the cap tightens. This matters
+particularly on real PaySim data, where fraud only ever occurs in
+`TRANSFER`/`CASH-OUT` transactions: a cap that forces capacity into other
+sectors can cost real yield, since it's spending investigator time where
+the model has nothing to find. Saves the table to
+`reports/sector_cap_sensitivity.csv` and a plot to `reports/figures/`.
+
 ## References
 
 - Blocki, J., Christin, N., Datta, A., Procaccia, A. D., & Sinha, A. (2013).

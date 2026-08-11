@@ -73,10 +73,12 @@ def compute_expected_yield_summary(
 
 
 def build_yield_table(test_df: pd.DataFrame, yield_summary: pd.DataFrame) -> pd.DataFrame:
-    """Merge expected-yield scores with transaction identifiers and ground
-    truth, ranked descending by expected yield. This table is exactly what
-    the ILP optimizer consumes as its objective function input."""
-    table = test_df[["step", "amount", "isFraud"]].reset_index(drop=True).copy()
+    """Merge expected-yield scores with transaction identifiers, ground
+    truth, and type, ranked descending by expected yield. This table is
+    exactly what the ILP optimizer consumes as its objective function
+    input (type is needed there for sector/capacity constraints)."""
+    type_cols = [c for c in test_df.columns if c.startswith("type_")]
+    table = test_df[["step", "amount", "isFraud", *type_cols]].reset_index(drop=True).copy()
     table = pd.concat([table, yield_summary.reset_index(drop=True)], axis=1)
     return table.sort_values("expected_yield_mean", ascending=False).reset_index(drop=True)
 
