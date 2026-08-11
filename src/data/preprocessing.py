@@ -58,9 +58,32 @@ def add_balance_discrepancy_features(df: pd.DataFrame) -> pd.DataFrame:
 
 
 def encode_transaction_type(df: pd.DataFrame) -> pd.DataFrame:
-    """One-hot encode the `type` column into fixed, known categories."""
+    """
+    One-hot encode the `type` column into fixed, known categories.
+
+    Normalizes underscores to hyphens first: PaySim documentation almost
+    universally writes transaction types with hyphens (CASH-OUT), but some
+    raw CSV distributions of the dataset actually store them with
+    underscores (CASH_OUT) instead. Since pd.Categorical only matches
+    exact strings, a silent mismatch here would zero out the *entire*
+    one-hot encoding for every affected row rather than error - and
+    CASH_OUT is one of only two transaction types PaySim fraud ever
+    occurs in, so this is a correctness-critical normalization, not
+    cosmetic. Raises a clear error if any value still doesn't match a
+    known category after normalizing, rather than silently producing an
+    all-zero row.
+    """
     df = df.copy()
-    df["type"] = pd.Categorical(df["type"], categories=TRANSACTION_TYPES)
+    normalized = df["type"].astype(str).str.replace("_", "-", regex=False)
+
+    unrecognized = set(normalized.unique()) - set(TRANSACTION_TYPES)
+    if unrecognized:
+        raise ValueError(
+            f"Unrecognized transaction type(s) after normalization: {sorted(unrecognized)}. "
+            f"Expected one of {TRANSACTION_TYPES}. Check the raw 'type' column values."
+        )
+
+    df["type"] = pd.Categorical(normalized, categories=TRANSACTION_TYPES)
     dummies = pd.get_dummies(df["type"], prefix="type", dtype=int)
     df = pd.concat([df.drop(columns=["type"]), dummies], axis=1)
     return df

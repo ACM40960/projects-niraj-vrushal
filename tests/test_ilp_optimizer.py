@@ -5,6 +5,7 @@ import pytest
 from src.optimization.ilp_optimizer import (
     DEFAULT_AUDIT_COST_BY_TYPE,
     build_candidate_pool,
+    compare_sector_composition,
     naive_topk_baseline,
     sector_cap_sensitivity,
     solve_auditor_allocation,
@@ -163,3 +164,19 @@ def test_sector_cap_sensitivity_returns_one_row_per_cap(yield_table):
     unconstrained_yield = sensitivity_df.loc[sensitivity_df["sector_cap_fraction"].isna(), "total_expected_yield"].iloc[0]
     tightest_yield = sensitivity_df.loc[sensitivity_df["sector_cap_fraction"] == 0.3, "total_expected_yield"].iloc[0]
     assert tightest_yield <= unconstrained_yield + 1e-6
+
+
+def test_compare_sector_composition_returns_per_sector_breakdown(yield_table):
+    candidates = build_candidate_pool(yield_table, shortlist_size=500, random_sample_size=50)
+    comparison = compare_sector_composition(candidates, capacity=200.0, cap_a=0.3, cap_b=None)
+
+    assert "sector" in comparison.columns
+    assert "delta_audited" in comparison.columns
+    assert "delta_fraud" in comparison.columns
+    for t in TYPES:
+        assert t in comparison["sector"].values
+    # precision columns should be valid rates
+    precision_cols = [c for c in comparison.columns if c.startswith("precision_")]
+    assert len(precision_cols) == 2
+    for col in precision_cols:
+        assert comparison[col].between(0, 1).all()

@@ -235,6 +235,81 @@ def naive_topk_baseline(
     return candidates.drop(columns=["_type", "_audit_cost"])
 
 
+def compare_sector_composition(
+    candidates: pd.DataFrame,
+    capacity: float,
+    cap_a: float | None,
+    cap_b: float | None,
+    audit_cost_by_type: dict | None = None,
+) -> pd.DataFrame:
+    """
+    Solve the ILP at two different sector_cap_fraction values and compare
+    the resulting audit composition sector-by-sector: how many
+    transactions (and how many actual fraud cases) were audited in each
+    sector under each cap. Used to diagnose *why* one cap can outperform
+    a looser one on real outcomes despite the looser cap giving the
+    optimizer more freedom - e.g. whether loosening the cap shifts audits
+    toward a sector where the model's own top picks are less often
+    correct, even though the model's posterior yield estimate says
+    otherwise.
+    """
+    alloc_a = solve_auditor_allocation(
+        candidates, capacity=capacity, sector_cap_fraction=cap_a, audit_cost_by_type=audit_cost_by_type
+    )
+    alloc_b = solve_auditor_allocation(
+        candidates, capacity=capacity, sector_cap_fraction=cap_b, audit_cost_by_type=audit_cost_by_type
+    )
+
+    def _sector_stats(allocation: pd.DataFrame) -> pd.DataFrame:
+        audited = allocation[allocation["audited"] == 1].copy()
+        audited["_type"] = _infer_transaction_type(audited)
+        return audited.groupby("_type").agg(audited=("isFraud", "size"), fraud=("isFraud", "sum"))
+
+    label_a = f"cap={cap_a}" if cap_a is not None else "unconstrained"
+    label_b = f"cap={cap_b}" if cap_b is not None else "unconstrained"
+
+    stats_a = _sector_stats(alloc_a).rename(columns=lambda c: f"{c}_{label_a}")
+    stats_b = _sector_stats(alloc_b).rename(columns=lambda c: f"{c}_{label_b}")
+
+    comparison = stats_a.join(stats_b, how="outer").fillna(0).astype(int)
+    comparison[f"precision_{label_a}"] = (
+        comparison[f"fraud_{label_a}"] / comparison[f"audited_{label_a}"].replace(0, np.nan)
+    ).fillna(0)
+    comparison[f"precision_{label_b}"] = (
+        comparison[f"fraud_{label_b}"] / comparison[f"audited_{label_b}"].replace(0, np.nan)
+    ).fillna(0)
+    comparison["delta_audited"] = comparison[f"audited_{label_b}"] - comparison[f"audited_{label_a}"]
+    comparison["delta_fraud"] = comparison[f"fraud_{label_b}"] - comparison[f"fraud_{label_a}"]
+
+    return comparison.reset_index().rename(columns={"_type": "sector"})
+
+
+def plot_sector_composition_comparison(
+    comparison: pd.DataFrame, label_a: str, label_b: str, save_path: pathlib.Path
+) -> None:
+    """Grouped bar chart: precision (fraud caught / audited) per sector,
+    side by side for the two compared caps - the key diagnostic for
+    whether loosening the cap dilutes hit-rate in a specific sector."""
+    import matplotlib.pyplot as plt
+
+    sectors = comparison["sector"]
+    x = np.arange(len(sectors))
+    width = 0.35
+
+    fig, ax = plt.subplots(figsize=(8, 5))
+    ax.bar(x - width / 2, comparison[f"precision_{label_a}"] * 100, width, label=label_a)
+    ax.bar(x + width / 2, comparison[f"precision_{label_b}"] * 100, width, label=label_b)
+    ax.set_xticks(x)
+    ax.set_xticklabels(sectors, rotation=45)
+    ax.set_ylabel("Precision (% of audits that were actual fraud)")
+    ax.set_title(f"Sector-level precision: {label_a} vs {label_b}")
+    ax.legend()
+    plt.tight_layout()
+    FIGURES_DIR.mkdir(parents=True, exist_ok=True)
+    plt.savefig(save_path, dpi=150)
+    plt.close(fig)
+
+
 def summarize_allocation(allocation: pd.DataFrame, label: str) -> dict:
     """Summary stats for one allocation (ILP or naive baseline): audits
     used, expected yield captured, and actual fraud cases/$ caught
@@ -396,3 +471,25 @@ if __name__ == "__main__":
         sensitivity_df, naive_summary, save_path=FIGURES_DIR / "sector_cap_sensitivity.png"
     )
     print(f"Saved sensitivity plot to {FIGURES_DIR / 'sector_cap_sensitivity.png'}")
+
+    # Diagnose *why* one cap outperforms another by comparing audit
+    # composition sector-by-sector. Defaults to comparing the sweep's best
+    # cap (by fraud $ caught) against unconstrained, since that's the
+    # comparison that actually explains a non-monotonic sweep result.
+    best_row = sensitivity_df.loc[sensitivity_df["fraud_amount_caught"].idxmax()]
+    best_cap = best_row["sector_cap_fraction"]
+    if pd.notna(best_cap) and best_cap < 1.0:
+        print(f"\nBest cap by real fraud $ caught: {best_cap} "
+              f"(vs unconstrained) - comparing sector composition...")
+        composition = compare_sector_composition(candidates, capacity=capacity, cap_a=best_cap, cap_b=None)
+        print("\n" + composition.to_string(index=False))
+
+        label_a, label_b = f"cap={best_cap}", "unconstrained"
+        composition_path = REPORTS_DIR / "sector_composition_comparison.csv"
+        composition.to_csv(composition_path, index=False)
+        print(f"\nSaved sector composition comparison to {composition_path}")
+
+        plot_sector_composition_comparison(
+            composition, label_a, label_b, save_path=FIGURES_DIR / "sector_composition_comparison.png"
+        )
+        print(f"Saved sector composition plot to {FIGURES_DIR / 'sector_composition_comparison.png'}")

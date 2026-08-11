@@ -44,6 +44,40 @@ def test_encode_transaction_type_produces_one_hot_columns(raw_df):
     assert (df[type_cols].sum(axis=1) == 1).all()
 
 
+def test_encode_transaction_type_normalizes_underscore_variants(raw_df):
+    # Regression test: some real PaySim CSV distributions store type
+    # values with underscores (CASH_OUT, CASH_IN) rather than the
+    # hyphenated form (CASH-OUT, CASH-IN) used elsewhere in this
+    # codebase and in most PaySim documentation. Previously this silently
+    # zeroed out the one-hot encoding for every affected row instead of
+    # erroring, corrupting a feature for two of the five transaction
+    # types (including CASH_OUT, one of only two fraud-eligible types)
+    # without any visible failure.
+    underscored = raw_df.copy()
+    underscored["type"] = underscored["type"].str.replace("-", "_", regex=False)
+
+    df = encode_transaction_type(underscored)
+    type_cols = [f"type_{t}" for t in TRANSACTION_TYPES]
+
+    # Every row must map to exactly one category - none should have
+    # silently fallen through to an all-zero encoding.
+    assert (df[type_cols].sum(axis=1) == 1).all()
+
+    # Cross-check against the hyphenated version of the same data: the
+    # resulting one-hot columns should be identical either way.
+    df_hyphenated = encode_transaction_type(raw_df)
+    pd.testing.assert_frame_equal(
+        df[type_cols].reset_index(drop=True), df_hyphenated[type_cols].reset_index(drop=True)
+    )
+
+
+def test_encode_transaction_type_raises_on_truly_unrecognized_values(raw_df):
+    bad = raw_df.copy()
+    bad.loc[0, "type"] = "NOT_A_REAL_TYPE"
+    with pytest.raises(ValueError, match="Unrecognized transaction type"):
+        encode_transaction_type(bad)
+
+
 def test_engineer_features_combines_both_steps(raw_df):
     df = engineer_features(raw_df)
     assert "type" not in df.columns

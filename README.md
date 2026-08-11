@@ -182,6 +182,19 @@ sectors can cost real yield, since it's spending investigator time where
 the model has nothing to find. Saves the table to
 `reports/sector_cap_sensitivity.csv` and a plot to `reports/figures/`.
 
+Finally, compares audit **composition** sector-by-sector between the
+sensitivity sweep's best-performing cap (by actual fraud $ caught) and
+the unconstrained case, to diagnose *why* one outperforms the other -
+e.g. whether loosening the cap shifts audits toward a sector where the
+model's own top picks turn out to be less often correct, even when the
+model's posterior yield estimate says otherwise. This is what surfaces a
+genuinely useful finding on real PaySim data: real fraud capture can
+peak at a moderate cap (e.g. 0.5) rather than at "unconstrained," meaning
+the sector cap acts as a hedge against model overconfidence rather than
+a pure cost. Saves the table to
+`reports/sector_composition_comparison.csv` and a plot to
+`reports/figures/`.
+
 ## References
 
 - Blocki, J., Christin, N., Datta, A., Procaccia, A. D., & Sinha, A. (2013).

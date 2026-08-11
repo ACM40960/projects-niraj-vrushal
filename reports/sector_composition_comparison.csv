@@ -1,0 +1,6 @@
+sector,audited_cap=0.3,fraud_cap=0.3,audited_unconstrained,fraud_unconstrained,precision_cap=0.3,precision_unconstrained,delta_audited,delta_fraud
+CASH-IN,116,0,114,0,0.0,0.0,-2,0
+CASH-OUT,467,297,379,212,0.6359743040685225,0.5593667546174143,-88,-85
+DEBIT,1,0,1,0,0.0,0.0,0,0
+PAYMENT,170,0,170,0,0.0,0.0,0,0
+TRANSFER,248,198,319,262,0.7983870967741935,0.8213166144200627,71,64
