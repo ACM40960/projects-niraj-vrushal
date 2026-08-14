@@ -195,6 +195,31 @@ a pure cost. Saves the table to
 `reports/sector_composition_comparison.csv` and a plot to
 `reports/figures/`.
 
+### End-to-end benchmark
+
+```bash
+python -m src.evaluation.benchmark
+```
+
+Every prior evaluation validated one stage in isolation - this tests the
+project's actual central claim directly: that a Bayesian posterior
+specifically (not just any probability estimate) is what enables good
+capacity-constrained allocation.
+
+- **Score-source comparison**: runs the identical ILP formulation (same
+  capacity, sector caps, mandatory sampling) driven by two different
+  score sources - the Bayesian posterior mean vs. the Random Forest
+  baseline's `predict_proba` - each also compared to its own naive top-k
+  baseline, isolating whether the scoring model matters from whether
+  constrained optimization matters at all.
+- **Capacity sensitivity**: sweeps the auditor-capacity budget (only a
+  single value was tested in every prior ILP run) to show how outcomes
+  scale as resourcing changes.
+
+Saves `reports/score_source_comparison.csv` and
+`reports/capacity_sensitivity.csv`, plus matching plots in
+`reports/figures/`.
+
 ## References
 
 - Blocki, J., Christin, N., Datta, A., Procaccia, A. D., & Sinha, A. (2013).
