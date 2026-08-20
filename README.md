@@ -228,3 +228,7 @@ Saves `reports/score_source_comparison.csv` and
   detection using Bayesian inference. *IEEE BigComp*, 1–8.
 - Lopez-Rojas, E. A., Elmir, A., & Axelsson, S. (2016). PaySim: A financial
   mobile money simulator for fraud detection. *28th EMSS*, 249–255.
+
+## Student Details
+- Vrushal Bagwe (25210728)
+- Niraj Palve (25200483)
